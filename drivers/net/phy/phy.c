@@ -722,6 +722,10 @@ void phy_change(struct work_struct *work)
 	/* reschedule state queue work to run as soon as possible */
 	cancel_delayed_work_sync(&phydev->state_queue);
 	queue_delayed_work(system_power_efficient_wq, &phydev->state_queue, 0);
+<<<<<<< HEAD
+=======
+
+>>>>>>> bbb47bd... PHYLIB: queue work on system_power_efficient_wq
 	return;
 
 ignore:
@@ -1012,6 +1016,7 @@ void phy_state_machine(struct work_struct *work)
 	if (err < 0)
 		phy_error(phydev);
 
+<<<<<<< HEAD
 	dev_dbg(&phydev->dev, "PHY state change %s -> %s\n",
 		phy_state_to_str(old_state), phy_state_to_str(phydev->state));
 
@@ -1024,6 +1029,10 @@ void phy_mac_interrupt(struct phy_device *phydev, int new_link)
 	cancel_work_sync(&phydev->phy_queue);
 	phydev->link = new_link;
 	schedule_work(&phydev->phy_queue);
+=======
+	queue_delayed_work(system_power_efficient_wq, &phydev->state_queue,
+			PHY_STATE_TIME * HZ);
+>>>>>>> bbb47bd... PHYLIB: queue work on system_power_efficient_wq
 }
 EXPORT_SYMBOL(phy_mac_interrupt);
 
