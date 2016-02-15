@@ -219,8 +219,8 @@ struct od_cpu_dbs_info_s {
 	struct cpu_dbs_info cdbs;
 	struct cpufreq_frequency_table *freq_table;
 	unsigned int freq_lo;
-	unsigned int freq_lo_jiffies;
-	unsigned int freq_hi_jiffies;
+	unsigned int freq_lo_delay_us;
+	unsigned int freq_hi_delay_us;
 	unsigned int sample_type:1;
 };
 
@@ -270,17 +270,6 @@ struct od_ops {
 			unsigned int freq_next, unsigned int relation);
 	void (*freq_increase)(struct cpufreq_policy *policy, unsigned int freq);
 };
-
-static inline int delay_for_sampling_rate(unsigned int sampling_rate)
-{
-	int delay = usecs_to_jiffies(sampling_rate);
-
-	/* We want all CPUs to do sampling nearly on same jiffy */
-	if (num_online_cpus() > 1)
-		delay -= jiffies % delay;
-
-	return delay;
-}
 
 #define declare_show_sampling_rate_min(_gov)				\
 static ssize_t show_sampling_rate_min_gov_sys				\
