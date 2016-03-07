@@ -1539,10 +1539,6 @@ struct sched_dl_entity {
 	 * task has to wait for a replenishment to be performed at the
 	 * next firing of dl_timer.
 	 *
-	 * @dl_new tells if a new instance arrived. If so we must
-	 * start executing it with full runtime and reset its absolute
-	 * deadline;
-	 *
 	 * @dl_boosted tells if we are boosted due to DI. If so we are
 	 * outside bandwidth enforcement mechanism (but only until we
 	 * exit the critical section);
@@ -1557,7 +1553,7 @@ struct sched_dl_entity {
 	 * conditions between the inactive timer handler and the wakeup
 	 * code.
 	 */
-	int dl_throttled, dl_new, dl_boosted, dl_yielded, dl_non_contending;
+	int dl_throttled, dl_boosted, dl_yielded, dl_non_contending;
 
 	/*
 	 * Bandwidth enforcement timer. Each -deadline task has its
