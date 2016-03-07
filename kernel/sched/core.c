@@ -2340,7 +2340,6 @@ void __dl_clear_params(struct task_struct *p)
 	dl_se->dl_density = 0;
 
 	dl_se->dl_throttled = 0;
-	dl_se->dl_new = 1;
 	dl_se->dl_yielded = 0;
 	dl_se->dl_non_contending = 0;
 }
