@@ -9630,6 +9630,7 @@ redo:
 
 more_balance:
 		raw_spin_lock_irqsave(&busiest->lock, flags);
+		update_rq_clock(busiest);
 
 		/* The world might have changed. Validate assumptions */
 		if (busiest->nr_running <= 1) {
