@@ -871,6 +871,12 @@ static void _remove_opp_table(struct opp_table *opp_table)
 		  _kfree_device_rcu);
 }
 
+void _opp_free(struct dev_pm_opp *opp, struct opp_table *opp_table)
+{
+	kfree(opp);
+	_remove_opp_table(opp_table);
+}
+
 /**
  * _kfree_opp_rcu() - Free OPP RCU handler
  * @head:	RCU head
@@ -886,7 +892,6 @@ static void _kfree_opp_rcu(struct rcu_head *head)
  * _opp_remove()  - Remove an OPP from a table definition
  * @opp_table:	points back to the opp_table struct this opp belongs to
  * @opp:	pointer to the OPP to remove
- * @notify:	OPP_EVENT_REMOVE notification should be sent or not
  *
  * This function removes an opp definition from the opp table.
  *
@@ -894,16 +899,13 @@ static void _kfree_opp_rcu(struct rcu_head *head)
  * It is assumed that the caller holds required mutex for an RCU updater
  * strategy.
  */
-static void _opp_remove(struct opp_table *opp_table,
-			struct dev_pm_opp *opp, bool notify)
+static void _opp_remove(struct opp_table *opp_table, struct dev_pm_opp *opp)
 {
 	/*
 	 * Notify the changes in the availability of the operable
 	 * frequency/voltage list.
 	 */
-	if (notify)
-		srcu_notifier_call_chain(&opp_table->srcu_head,
-					 OPP_EVENT_REMOVE, opp);
+	srcu_notifier_call_chain(&opp_table->srcu_head, OPP_EVENT_REMOVE, opp);
 	opp_debug_remove_one(opp);
 	list_del_rcu(&opp->node);
 	call_srcu(&opp_table->srcu_head.srcu, &opp->rcu_head, _kfree_opp_rcu);
@@ -950,7 +952,7 @@ void dev_pm_opp_remove(struct device *dev, unsigned long freq)
 		goto unlock;
 	}
 
-	_opp_remove(opp_table, opp, true);
+	_opp_remove(opp_table, opp);
 unlock:
 	mutex_unlock(&opp_table_lock);
 }
@@ -1110,7 +1112,7 @@ static int _opp_add_v1(struct device *dev, unsigned long freq, long u_volt,
 	return 0;
 
 free_opp:
-	_opp_remove(opp_table, new_opp, false);
+	_opp_free(new_opp, opp_table);
 unlock:
 	mutex_unlock(&opp_table_lock);
 	return ret;
@@ -1653,7 +1655,7 @@ static int _opp_add_static_v2(struct device *dev, struct device_node *np)
 	return 0;
 
 free_opp:
-	_opp_remove(opp_table, new_opp, false);
+	_opp_free(new_opp, opp_table);
 unlock:
 	mutex_unlock(&opp_table_lock);
 	return ret;
@@ -1886,7 +1888,7 @@ void dev_pm_opp_of_remove_table(struct device *dev)
 		/* Free static OPPs */
 		list_for_each_entry_safe(opp, tmp, &opp_table->opp_list, node) {
 			if (!opp->dynamic)
-				_opp_remove(opp_table, opp, true);
+				_opp_remove(opp_table, opp);
 		}
 	} else {
 		_remove_opp_dev(_find_opp_dev(dev, opp_table), opp_table);
