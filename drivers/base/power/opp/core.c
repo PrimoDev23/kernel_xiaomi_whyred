@@ -814,6 +814,7 @@ static struct opp_table *_add_opp_table(struct device *dev)
 
 	srcu_init_notifier_head(&opp_table->srcu_head);
 	INIT_LIST_HEAD(&opp_table->opp_list);
+	mutex_init(&opp_table->lock);
 
 	/* Secure the device table modification */
 	list_add_rcu(&opp_table->node, &opp_tables);
@@ -902,6 +903,8 @@ static void _opp_kref_release(struct kref *kref)
 	list_del_rcu(&opp->node);
 	call_srcu(&opp_table->srcu_head.srcu, &opp->rcu_head, _kfree_opp_rcu);
 
+	mutex_unlock(&opp_table->lock);
+
 	_remove_opp_table(opp_table);
 }
 
@@ -937,12 +940,16 @@ void dev_pm_opp_remove(struct device *dev, unsigned long freq)
 	if (IS_ERR(opp_table))
 		goto unlock;
 
+	mutex_lock(&opp_table->lock);
+
 	list_for_each_entry(opp, &opp_table->opp_list, node) {
 		if (opp->rate == freq) {
 			found = true;
 			break;
 		}
 	}
+
+	mutex_unlock(&opp_table->lock);
 
 	if (!found) {
 		dev_warn(dev, "%s: Couldn't find OPP with freq: %lu\n",
@@ -997,7 +1004,7 @@ static int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
 		    struct opp_table *opp_table)
 {
 	struct dev_pm_opp *opp;
-	struct list_head *head = &opp_table->opp_list;
+	struct list_head *head;
 	int ret;
 
 	/*
@@ -1008,6 +1015,9 @@ static int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
 	 * loop, don't replace it with head otherwise it will become an infinite
 	 * loop.
 	 */
+	mutex_lock(&opp_table->lock);
+	head = &opp_table->opp_list;
+
 	list_for_each_entry_rcu(opp, &opp_table->opp_list, node) {
 		if (new_opp->rate > opp->rate) {
 			head = &opp->node;
@@ -1022,12 +1032,17 @@ static int _opp_add(struct device *dev, struct dev_pm_opp *new_opp,
 			 __func__, opp->rate, opp->u_volt, opp->available,
 			 new_opp->rate, new_opp->u_volt, new_opp->available);
 
-		return opp->available && new_opp->u_volt == opp->u_volt ?
+		ret = opp->available && new_opp->u_volt == opp->u_volt ?
 			0 : -EEXIST;
+
+		mutex_unlock(&opp_table->lock);
+		return ret;
 	}
 
-	new_opp->opp_table = opp_table;
 	list_add_rcu(&new_opp->node, head);
+	mutex_unlock(&opp_table->lock);
+
+	new_opp->opp_table = opp_table;
 	kref_init(&new_opp->kref);
 
 	ret = opp_debug_create_one(new_opp, opp_table);
@@ -1730,6 +1745,8 @@ static int _opp_set_availability(struct device *dev, unsigned long freq,
 		goto unlock;
 	}
 
+	mutex_lock(&opp_table->lock);
+
 	/* Do we have the frequency? */
 	list_for_each_entry(tmp_opp, &opp_table->opp_list, node) {
 		if (tmp_opp->rate == freq) {
@@ -1737,6 +1754,9 @@ static int _opp_set_availability(struct device *dev, unsigned long freq,
 			break;
 		}
 	}
+
+	mutex_unlock(&opp_table->lock);
+
 	if (IS_ERR(opp)) {
 		r = PTR_ERR(opp);
 		goto unlock;
