@@ -2100,6 +2100,7 @@ __acquires(&pool->lock)
 
 	lock_map_acquire_read(&pwq->wq->lockdep_map);
 	lock_map_acquire(&lockdep_map);
+	crossrelease_hist_start(XHLOCK_PROC);
 	trace_workqueue_execute_start(work);
 	worker->current_func(work);
 	/*
@@ -2107,6 +2108,7 @@ __acquires(&pool->lock)
 	 * point will only record its address.
 	 */
 	trace_workqueue_execute_end(work);
+	crossrelease_hist_end(XHLOCK_PROC);
 	lock_map_release(&lockdep_map);
 	lock_map_release(&pwq->wq->lockdep_map);
 
