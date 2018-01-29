@@ -4985,8 +4985,6 @@ static inline void hrtick_update(struct rq *rq)
 #ifdef CONFIG_SMP
 static inline unsigned long cpu_util(int cpu);
 
-static bool __cpu_overutilized(int cpu, int delta);
-static bool cpu_overutilized(int cpu);
 unsigned long boosted_cpu_util(int cpu);
 #else
 #define boosted_cpu_util(cpu) cpu_util_freq(cpu)
@@ -5579,11 +5577,6 @@ unsigned long capacity_min_of(int cpu)
 	       >> SCHED_CAPACITY_SHIFT;
 }
 
-
-static inline bool energy_aware(void)
-{
-       return sched_feat(ENERGY_AWARE);
-}
 
 struct energy_env {
 	struct sched_group	*sg_top;
@@ -6222,12 +6215,12 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 	return __task_fits(p, cpu, 0);
 }
 
-static bool __cpu_overutilized(int cpu, int delta)
+bool __cpu_overutilized(int cpu, int delta)
 {
 	return (capacity_of(cpu) * 1024) < ((cpu_util(cpu) + delta) * capacity_margin);
 }
 
-static bool cpu_overutilized(int cpu)
+bool cpu_overutilized(int cpu)
 {
 	return __cpu_overutilized(cpu, 0);
 }
