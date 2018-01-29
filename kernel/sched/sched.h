@@ -1499,6 +1499,9 @@ extern void idle_exit_fair(struct rq *this_rq);
 
 extern void set_cpus_allowed_common(struct task_struct *p, const struct cpumask *new_mask);
 
+bool __cpu_overutilized(int cpu, int delta);
+bool cpu_overutilized(int cpu);
+
 #else
 
 static inline void idle_enter_fair(struct rq *rq) { }
@@ -2164,3 +2167,8 @@ walt_task_in_cum_window_demand(struct rq *rq, struct task_struct *p)
 #define perf_domain_span(pd) NULL
 #endif
 #endif
+
+static inline bool energy_aware(void)
+{
+       return sched_feat(ENERGY_AWARE);
+}
