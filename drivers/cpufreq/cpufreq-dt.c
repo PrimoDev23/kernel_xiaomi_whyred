@@ -20,6 +20,7 @@
 #include <linux/cpufreq.h>
 #include <linux/cpufreq-dt.h>
 #include <linux/cpumask.h>
+#include <linux/energy_model.h>
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -144,6 +145,7 @@ static int resources_available(void)
 
 static int cpufreq_init(struct cpufreq_policy *policy)
 {
+	struct em_data_callback em_cb = EM_DATA_CB(of_dev_pm_opp_get_cpu_power);
 	struct cpufreq_frequency_table *freq_table;
 	struct private_data *priv;
 	struct device *cpu_dev;
@@ -152,7 +154,7 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 	unsigned int transition_latency;
 	bool opp_v1 = false;
 	const char *name;
-	int ret;
+	int ret, nr_opp;
 
 	cpu_dev = get_cpu_device(policy->cpu);
 	if (!cpu_dev) {
@@ -216,6 +218,7 @@ static int cpufreq_init(struct cpufreq_policy *policy)
 		ret = -EPROBE_DEFER;
 		goto out_free_opp;
 	}
+	nr_opp = ret;
 
 	if (opp_v1) {
 		struct cpufreq_dt_platform_data *pd = cpufreq_get_driver_data();
@@ -286,6 +289,8 @@ static int cpufreq_init(struct cpufreq_policy *policy)
          */
 	policy->up_transition_delay_us = transition_latency / NSEC_PER_USEC;
 	policy->down_transition_delay_us = 50000; /* 50ms */
+
+	em_register_perf_domain(policy->cpus, nr_opp, &em_cb);
 
 	return 0;
 
