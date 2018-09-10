@@ -226,14 +226,15 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 
 	if (entered_state >= 0) {
 		/*
-		 * local_clock() returns the time in nanosecond, let's shift
-		 * by 10 (divide by 1024) to have microsecond based time.
+		 * Update cpuidle counters
+		 * This can be moved to within driver enter routine,
+		 * but that results in multiple copies of same code.
 		 */
 		diff = ktime_us_delta(time_end, time_start);
 		if (diff > INT_MAX)
 			diff = INT_MAX;
 
-		dev->last_residency = (int) diff;
+		dev->last_residency = (int)diff;
 		dev->states_usage[entered_state].time += dev->last_residency;
 		dev->states_usage[entered_state].usage++;
 	} else {
