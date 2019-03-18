@@ -21,6 +21,7 @@
 #include <linux/input/qpnp-power-on.h>
 #include <linux/irq.h>
 #include <linux/pmic-voter.h>
+#include <linux/moduleparam.h>
 #include "smb-lib.h"
 #include "smb-reg.h"
 #include "battery.h"
@@ -57,6 +58,11 @@ extern int hwc_check_global;
 			pr_debug("%s: %s: " fmt, chg->name,	\
 				__func__, ##__VA_ARGS__);	\
 	} while (0)
+
+bool suspended = false;
+unsigned int stop_charge_capacity = 100;
+
+module_param(stop_charge_capacity, uint, 0644);
 
 static bool is_secure(struct smb_charger *chg, int addr)
 {
@@ -1655,6 +1661,9 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
 	int rc = -EINVAL;
+	union power_supply_propval charge_cache = {0, };
+	union power_supply_propval suspend_cache = {0, };
+	union power_supply_propval suspend = {0, };
 
 	if (chg->fake_capacity >= 0) {
 		val->intval = chg->fake_capacity;
@@ -1664,6 +1673,33 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	if (chg->bms_psy)
 		rc = power_supply_get_property(chg->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, val);
+
+	if(stop_charge_capacity == 100 || stop_charge_capacity < 50){
+		return rc;
+	}
+
+	int result = smblib_get_prop_batt_status(chg,&charge_cache);
+
+	if(result < 0){
+		pr_err("Charging limiter: Error while getting batt_status");
+		return rc;
+	}
+
+	bool charging = charge_cache.intval == POWER_SUPPLY_STATUS_CHARGING;
+
+	if(val->intval == stop_charge_capacity && charging && !suspended){
+		suspend_cache.intval = 1;
+		pr_info("Full charged to 80%");
+		if(smblib_set_prop_input_suspend(chg,&suspend_cache)){
+			pr_info("Charging limiter: Error while suspend charging");
+		}
+	}else if(val->intval < stop_charge_capacity && suspended){
+		suspend_cache.intval = 0;
+		if(smblib_set_prop_input_suspend(chg,&suspend_cache)){
+			pr_info("Charging limiter: Error while continue charging");
+		}
+	}
+
 	return rc;
 }
 
@@ -1972,6 +2008,7 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 	}
 
 	power_supply_changed(chg->batt_psy);
+	suspended = (bool)val->intval;
 	return rc;
 }
 
