@@ -110,4 +110,10 @@ config QPNP_QNOVO
 	  module. It also allows userspace code to read diagnostics of voltage
 	  and current measured during certain phases of the pulses.
 
+config CHARGING_LIMITER
+	bool "Kernel based charging limiter"
+	default n
+	help
+	  Say Y to include configure-able kernel based battery charging limiter.
+
 endmenu
