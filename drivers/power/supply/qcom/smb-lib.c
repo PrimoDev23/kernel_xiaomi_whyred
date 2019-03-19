@@ -59,12 +59,14 @@ extern int hwc_check_global;
 				__func__, ##__VA_ARGS__);	\
 	} while (0)
 
+#ifdef CONFIG_CHARGING_LIMITER
 bool suspended = false;
 unsigned int stop_charge_capacity = 100;
 unsigned int continue_charge_capacity = 100;
 
 module_param(stop_charge_capacity, uint, 0644);
 module_param(continue_charge_capacity, uint, 0644);
+#endif
 
 static bool is_secure(struct smb_charger *chg, int addr)
 {
@@ -1676,6 +1678,7 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 		rc = power_supply_get_property(chg->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, val);
 
+#ifdef CONFIG_CHARGING_LIMITER
 	//Deactivate with both values to 100 or higher (disabled by defaut)
 	//Also prevents from setting too low values
 	if((stop_charge_capacity >= 100 && continue_charge_capacity >= 100) || stop_charge_capacity < 50){
@@ -1706,6 +1709,7 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 			pr_info("Charging limiter: Error while continue charging");
 		}
 	}
+#endif
 
 	return rc;
 }
@@ -2015,7 +2019,10 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 	}
 
 	power_supply_changed(chg->batt_psy);
+#ifdef CONFIG_CHARGING_LIMITER
 	suspended = (bool)val->intval;
+#endif
+
 	return rc;
 }
 
