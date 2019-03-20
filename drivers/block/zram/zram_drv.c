@@ -1117,7 +1117,7 @@ compress_again:
 		return ret;
 	}
 
-	if (unlikely(comp_len > max_zpage_size)) {
+	if (comp_len >= max_zpage_size){
 		comp_len = PAGE_SIZE;
 		if (zram_wb_enabled(zram) && allow_wb) {
 			zcomp_stream_put(zram->comp);
