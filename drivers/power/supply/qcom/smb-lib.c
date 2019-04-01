@@ -28,6 +28,7 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 #include "fg-core.h"
+#include "charging_controller.h"
 
 #ifdef CONFIG_KERNEL_CUSTOM_F7A
 struct g_nvt_data {
@@ -67,6 +68,8 @@ unsigned int continue_charge_capacity = 100;
 module_param(stop_charge_capacity, uint, 0644);
 module_param(continue_charge_capacity, uint, 0644);
 #endif
+
+unsigned int current_cap;
 
 static bool is_secure(struct smb_charger *chg, int addr)
 {
@@ -193,6 +196,7 @@ int smblib_get_charge_param(struct smb_charger *chg,
 		*val_u = param->get_proc(param, val_raw);
 	else
 		*val_u = val_raw * param->step_u + param->min_u;
+
 	smblib_dbg(chg, PR_REGISTER, "%s = %d (0x%02x)\n",
 		   param->name, *val_u, val_raw);
 
@@ -446,6 +450,9 @@ int smblib_set_charge_param(struct smb_charger *chg,
 
 		val_raw = (val_u - param->min_u) / param->step_u;
 	}
+
+	//if(custom_icl != 0)
+		//val_raw = (custom_icl - param->min_u) / param->step_u;
 
 	rc = smblib_write(chg, param->reg, val_raw);
 	if (rc < 0) {
@@ -1668,6 +1675,7 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	union power_supply_propval charge_cache = {0, };
 	union power_supply_propval suspend_cache = {0, };
 	bool charging = false;
+	unsigned int custom_icl;
 
 	if (chg->fake_capacity >= 0) {
 		val->intval = chg->fake_capacity;
@@ -1696,6 +1704,19 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	}
 
 	charging = charge_cache.intval == POWER_SUPPLY_STATUS_CHARGING;
+
+	if(current_cap < val->intval){
+		current_cap = val->intval;
+		custom_icl = calculate_max_current(current_cap);
+		if(custom_icl > 0){
+			pr_info("custom_icl: %i", custom_icl);
+			rc = smblib_set_charge_param(chg, &chg->param.dc_icl, custom_icl);
+			if (rc < 0) {
+				smblib_err(chg, "Couldn't set DC input current limit rc=%d\n",
+					rc);
+			}
+		}
+	}
 
 	//If capacity == stop value and phone is charging and charging isn't suspended suspend charging
 	if(val->intval == stop_charge_capacity && charging && !suspended){
