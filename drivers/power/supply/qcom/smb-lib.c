@@ -28,7 +28,10 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 #include "fg-core.h"
+
+#ifdef CONFIG_CHARGING_CONTROLLER
 #include "charging_controller.h"
+#endif
 
 #ifdef CONFIG_KERNEL_CUSTOM_F7A
 struct g_nvt_data {
@@ -69,7 +72,13 @@ module_param(stop_charge_capacity, uint, 0644);
 module_param(continue_charge_capacity, uint, 0644);
 #endif
 
-unsigned int current_cap;
+#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
+bool charging = false;
+#endif
+
+#ifdef CONFIG_CHARGING_CONTROLLER
+unsigned int custom_icl;
+#endif
 
 static bool is_secure(struct smb_charger *chg, int addr)
 {
@@ -196,6 +205,17 @@ int smblib_get_charge_param(struct smb_charger *chg,
 		*val_u = param->get_proc(param, val_raw);
 	else
 		*val_u = val_raw * param->step_u + param->min_u;
+
+#ifdef CONFIG_CHARGING_CONTROLLER
+        //Only set new icl when custom_icl bigger 0, charging and only for some params
+	//This is like a helper in the case that custom_icl won't get set automatically
+        if(custom_icl > 0 && val_raw != (custom_icl - param->min_u) / param->step_u && charging &&
+                (strcmp(param->name, "input current limit status") == 0 ||
+                strcmp(param ->name, "usb input current limit") == 0||
+                strcmp(param->name, "fast charge current") == 0)){
+                        smblib_set_charge_param(chg, param, custom_icl);
+        }
+#endif
 
 	smblib_dbg(chg, PR_REGISTER, "%s = %d (0x%02x)\n",
 		   param->name, *val_u, val_raw);
@@ -451,8 +471,15 @@ int smblib_set_charge_param(struct smb_charger *chg,
 		val_raw = (val_u - param->min_u) / param->step_u;
 	}
 
-	//if(custom_icl != 0)
-		//val_raw = (custom_icl - param->min_u) / param->step_u;
+#ifdef CONFIG_CHARGING_CONTROLLER
+	//Only set new icl when custom_icl bigger 0, charging and only for some params
+	if(custom_icl > 0 && charging &&
+		(strcmp(param->name, "input current limit status") == 0 ||
+		strcmp(param ->name, "usb input current limit") == 0||
+		strcmp(param->name, "fast charge current") == 0)){
+			val_raw = (custom_icl - param->min_u) / param->step_u;
+	}
+#endif
 
 	rc = smblib_write(chg, param->reg, val_raw);
 	if (rc < 0) {
@@ -1674,8 +1701,6 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	int rc = -EINVAL;
 	union power_supply_propval charge_cache = {0, };
 	union power_supply_propval suspend_cache = {0, };
-	bool charging = false;
-	unsigned int custom_icl;
 
 	if (chg->fake_capacity >= 0) {
 		val->intval = chg->fake_capacity;
@@ -1685,6 +1710,35 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	if (chg->bms_psy)
 		rc = power_supply_get_property(chg->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, val);
+
+#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
+	//Get Charging state
+        if(smblib_get_prop_batt_status(chg,&charge_cache)){
+                pr_err("Charging limiter: Error while getting batt_status");
+                return rc;
+        }
+
+        charging = charge_cache.intval == POWER_SUPPLY_STATUS_CHARGING;
+#endif
+
+#ifdef CONFIG_CHARGING_CONTROLLER
+	//Check if charging
+	if(charging){
+		//If custom_icl == 0 (default or not night mode) calculate again
+		if(custom_icl == 0){
+			//custom_icl will be 0 if not night mode
+#ifdef CONFIG_CHARGING_LIMITER
+                        custom_icl = calculate_max_current(val->intval, stop_charge_capacity);
+#else
+                        custom_icl = calculate_max_current(val->intval, 100);
+#endif
+		}
+
+		if(custom_icl > 0){
+			smblib_set_charge_param(chg, &chg->param.icl_stat, custom_icl);
+		}
+	}
+#endif
 
 #ifdef CONFIG_CHARGING_LIMITER
 	//Deactivate with both values to 100 or higher (disabled by defaut)
@@ -1696,27 +1750,6 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	//If unlogical set values (continue >= stop) calculate new continue
 	if(continue_charge_capacity >= stop_charge_capacity)
 		continue_charge_capacity = stop_charge_capacity - 10;
-
-	//Get Charging state
-	if(smblib_get_prop_batt_status(chg,&charge_cache)){
-		pr_err("Charging limiter: Error while getting batt_status");
-		return rc;
-	}
-
-	charging = charge_cache.intval == POWER_SUPPLY_STATUS_CHARGING;
-
-	if(current_cap < val->intval){
-		current_cap = val->intval;
-		custom_icl = calculate_max_current(current_cap);
-		if(custom_icl > 0){
-			pr_info("custom_icl: %i", custom_icl);
-			rc = smblib_set_charge_param(chg, &chg->param.dc_icl, custom_icl);
-			if (rc < 0) {
-				smblib_err(chg, "Couldn't set DC input current limit rc=%d\n",
-					rc);
-			}
-		}
-	}
 
 	//If capacity == stop value and phone is charging and charging isn't suspended suspend charging
 	if(val->intval == stop_charge_capacity && charging && !suspended){
@@ -1775,7 +1808,26 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	}
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 
+#ifdef CONFIG_CHARGING_CONTROLLER
+	//If charger plugged and old icl set
+	if(usb_online || dc_online){
+                //custom_icl == 0 if deactivated or after plug in charger
+		if(custom_icl == 0){
+			smblib_set_charge_param(chg, &chg->param.icl_stat, 2000000);
+		}
+	}
+#endif
+
 	if (!usb_online && !dc_online) {
+#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
+		//Set charging to false if usb and dc not online
+		charging = false;
+#endif
+#ifdef CONFIG_CHARGING_CONTROLLER
+		//Reset custom icl on disconnecting charger
+		if(custom_icl > 0)
+			custom_icl = 0;
+#endif
 		switch (stat) {
 		case TERMINATE_CHARGE:
 		case INHIBIT_CHARGE:
