@@ -1808,16 +1808,6 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	}
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 
-#ifdef CONFIG_CHARGING_CONTROLLER
-	//If charger plugged and old icl set
-	if(usb_online || dc_online){
-                //custom_icl == 0 if deactivated or after plug in charger
-		if(custom_icl == 0){
-			smblib_set_charge_param(chg, &chg->param.icl_stat, 2000000);
-		}
-	}
-#endif
-
 	if (!usb_online && !dc_online) {
 #if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
 		//Set charging to false if usb and dc not online
