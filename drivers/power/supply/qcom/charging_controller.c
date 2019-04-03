@@ -4,11 +4,9 @@
 #include <linux/state_notifier.h>
 #include "charging_controller.h"
 
-static unsigned int input_current_limit = 0; //0 = disabled module
 static unsigned int mode = 0; //0 = off, 1 = night mode, 2 = fast charge (not there yet)
 static unsigned int time_h = 6;
 
-module_param(input_current_limit, uint, 0644);
 module_param(mode, uint, 0644);
 module_param(time_h, uint, 0644);
 
