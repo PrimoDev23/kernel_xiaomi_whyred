@@ -78,6 +78,7 @@ bool charging = false;
 
 #ifdef CONFIG_CHARGING_CONTROLLER
 unsigned int custom_icl;
+bool reload_values;
 #endif
 
 static bool is_secure(struct smb_charger *chg, int addr)
@@ -214,7 +215,15 @@ int smblib_get_charge_param(struct smb_charger *chg,
                 strcmp(param ->name, "usb input current limit") == 0||
                 strcmp(param->name, "fast charge current") == 0)){
                         smblib_set_charge_param(chg, param, custom_icl);
-        }
+        }else if(custom_icl == 0 && charging && *val_u < 1000000){
+		if(strcmp(param->name, "input current limit status") == 0)
+			smblib_set_charge_param(chg, &chg->param.icl_stat, 1000000);
+		else if(strcmp(param ->name, "usb input current limit") == 0)
+			smblib_set_charge_param(chg, &chg->param.usb_icl, 1000000);
+		else if(strcmp(param->name, "fast charge current") == 0)
+			smblib_set_charge_param(chg, &chg->param.fcc, 1000000);
+		smblib_set_icl_current(chg, 1500000);
+	}
 #endif
 
 	smblib_dbg(chg, PR_REGISTER, "%s = %d (0x%02x)\n",
@@ -478,6 +487,13 @@ int smblib_set_charge_param(struct smb_charger *chg,
 		strcmp(param ->name, "usb input current limit") == 0||
 		strcmp(param->name, "fast charge current") == 0)){
 			val_raw = (custom_icl - param->min_u) / param->step_u;
+	}else if(reload_values && charging && custom_icl == 0 &&
+			(strcmp(param->name, "input current limit status") == 0 ||
+        	        strcmp(param ->name, "usb input current limit") == 0||
+                	strcmp(param->name, "fast charge current") == 0)){
+				pr_info("Set normal");
+				val_raw = 82;
+				reload_values = false;
 	}
 #endif
 
@@ -1814,6 +1830,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		charging = false;
 #endif
 #ifdef CONFIG_CHARGING_CONTROLLER
+		reload_values = true;
 		//Reset custom icl on disconnecting charger
 		if(custom_icl > 0)
 			custom_icl = 0;
@@ -3466,6 +3483,17 @@ int smblib_get_charge_current(struct smb_charger *chg,
 	}
 
 	typec_source_rd = smblib_get_prop_ufp_mode(chg);
+
+#ifdef CONFIG_CHARGING_CONTROLLER
+	if(reload_values){
+		smblib_set_charge_param(chg, &chg->param.fcc, 1500000);
+		smblib_set_charge_param(chg, &chg->param.icl_stat, 1500000);
+		pr_info("Set QC 3.0 value to make charging rate reset");
+		*total_current_ua = HVDCP_CURRENT_UA;
+		reload_values = false;
+		return 0;
+	}
+#endif
 
 	/* QC 3.0 adapter */
 	if (apsd_result->bit & QC_3P0_BIT) {
