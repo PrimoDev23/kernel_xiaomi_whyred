@@ -19,9 +19,11 @@
 
 static unsigned int mode = 0; //0 = off, 1 = night mode, 2 = fast charge (not there yet)
 static unsigned int time_h = 6;
+static unsigned int charger_voltage = 5; //Use this to calculate charging time
 
 module_param(mode, uint, 0644);
 module_param(time_h, uint, 0644);
+module_param(charger_voltage, uint, 0644);
 
 //Gets called from outside and selects by mode
 extern int calculate_max_current(unsigned int cap_battery_now, unsigned int charge_till_cap)
@@ -52,10 +54,11 @@ extern int night_mode_icl(unsigned int cap_battery_now, unsigned int charge_till
 		time_h = 4;
 	int needed_capacity = 4000 * (charge_till_cap - cap_battery_now) / 100; //Calculate left capacity to 80%
 	pr_info("%s: needed_capacity = %i", module_name, needed_capacity);
+	pr_info("%s: charger_voltage = %i", module_name, charger_voltage);
+	pr_info("%s: time_h = %i", module_name, time_h);
 	//Calculate icl, print and return it
 	//Since I am using average values i can leave out voltages completely (Eventually will reintroduce them later)
-	int icl = (needed_capacity / time_h) * 1000;
-
+	int icl = ( (needed_capacity * 4.05) / (time_h * charger_voltage) ) * 1000;
 	pr_info("%s: %i", module_name, icl);
 	return icl;
 }
