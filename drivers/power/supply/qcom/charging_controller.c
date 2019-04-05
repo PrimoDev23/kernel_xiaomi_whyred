@@ -9,6 +9,10 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ *
+ * v1 - First Introduction of night mode
+ *
+ * v2 - Correct calculation and fix issue that reboot needed to get back normal charging 
  */
 
 #define module_name "charging_controller"
