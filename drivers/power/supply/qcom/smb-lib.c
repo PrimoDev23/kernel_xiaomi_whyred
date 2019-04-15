@@ -29,7 +29,7 @@
 #include "storm-watch.h"
 #include "fg-core.h"
 
-#ifdef CONFIG_CHARGING_CONTROLLER
+#ifdef CONFIG_NIGHT_CHARGE
 #include "charging_controller.h"
 #endif
 
@@ -72,11 +72,11 @@ module_param(stop_charge_capacity, uint, 0644);
 module_param(continue_charge_capacity, uint, 0644);
 #endif
 
-#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
+#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_NIGHT_CHARGE))
 bool charging = false;
 #endif
 
-#ifdef CONFIG_CHARGING_CONTROLLER
+#ifdef CONFIG_NIGHT_CHARGE
 unsigned int custom_icl;
 bool reload_values;
 #endif
@@ -207,7 +207,7 @@ int smblib_get_charge_param(struct smb_charger *chg,
 	else
 		*val_u = val_raw * param->step_u + param->min_u;
 
-#ifdef CONFIG_CHARGING_CONTROLLER
+#ifdef CONFIG_NIGHT_CHARGE
         //Only set new icl when custom_icl bigger 0, charging and only for some params
 	//This is like a helper in the case that custom_icl won't get set automatically
         if(custom_icl > 0 && val_raw != (custom_icl - param->min_u) / param->step_u && charging &&
@@ -474,7 +474,7 @@ int smblib_set_charge_param(struct smb_charger *chg,
 		val_raw = (val_u - param->min_u) / param->step_u;
 	}
 
-#ifdef CONFIG_CHARGING_CONTROLLER
+#ifdef CONFIG_NIGHT_CHARGE
 	//Only set new icl when custom_icl bigger 0, charging and only for some params
 	if(custom_icl > 0 && charging &&
 		(strcmp(param->name, "input current limit status") == 0 ||
@@ -1714,7 +1714,7 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 		rc = power_supply_get_property(chg->bms_psy,
 				POWER_SUPPLY_PROP_CAPACITY, val);
 
-#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
+#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_NIGHT_CHARGE))
 	//Get Charging state
         if(smblib_get_prop_batt_status(chg,&charge_cache)){
                 pr_err("Charging limiter: Error while getting batt_status");
@@ -1724,7 +1724,7 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
         charging = charge_cache.intval == POWER_SUPPLY_STATUS_CHARGING;
 #endif
 
-#ifdef CONFIG_CHARGING_CONTROLLER
+#ifdef CONFIG_NIGHT_CHARGE
 	//Check if charging
 	if(charging){
 		//If custom_icl == 0 (default or not night mode) calculate again
@@ -1812,11 +1812,11 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	stat = stat & BATTERY_CHARGER_STATUS_MASK;
 
 	if (!usb_online && !dc_online) {
-#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_CHARGING_CONTROLLER))
+#if (defined(CONFIG_CHARGING_LIMITER) || defined(CONFIG_NIGHT_CHARGE))
 		//Set charging to false if usb and dc not online
 		charging = false;
 #endif
-#ifdef CONFIG_CHARGING_CONTROLLER
+#ifdef CONFIG_NIGHT_CHARGE
 		reload_values = true;
 		//Reset custom icl on disconnecting charger
 		if(custom_icl > 0)
