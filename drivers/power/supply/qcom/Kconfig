@@ -116,7 +116,7 @@ config CHARGING_LIMITER
 	help
 	  Say Y to include configure-able kernel based battery charging limiter.
 
-config CHARGING_CONTROLLER
+config NIGHT_CHARGE
         bool "Kernel based charging controller"
         default n
         help
