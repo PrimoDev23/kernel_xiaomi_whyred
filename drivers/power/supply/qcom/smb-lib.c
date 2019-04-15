@@ -30,7 +30,7 @@
 #include "fg-core.h"
 
 #ifdef CONFIG_NIGHT_CHARGE
-#include "charging_controller.h"
+#include "night_charge.h"
 #endif
 
 #ifdef CONFIG_KERNEL_CUSTOM_F7A
@@ -1727,15 +1727,11 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 #ifdef CONFIG_NIGHT_CHARGE
 	//Check if charging
 	if(charging){
-		//If custom_icl == 0 (default or not night mode) calculate again
-		if(custom_icl == 0){
-			//custom_icl will be 0 if not night mode
 #ifdef CONFIG_CHARGING_LIMITER
                         custom_icl = calculate_max_current(val->intval, stop_charge_capacity);
 #else
                         custom_icl = calculate_max_current(val->intval, 100);
 #endif
-		}
 
 		if(custom_icl > 0){
 			smblib_set_charge_param(chg, &chg->param.icl_stat, custom_icl);
@@ -1819,8 +1815,10 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 #ifdef CONFIG_NIGHT_CHARGE
 		reload_values = true;
 		//Reset custom icl on disconnecting charger
-		if(custom_icl > 0)
+		if(custom_icl > 0){
 			custom_icl = 0;
+			reset_values();
+		}
 #endif
 		switch (stat) {
 		case TERMINATE_CHARGE:
