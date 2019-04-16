@@ -39,7 +39,7 @@ static unsigned int counter = 0;
 //Calculates night mode icl
 void calc_icl(unsigned long data)
 {
-	int left_time = time_h - counter * 2;
+	int left_time = time_h - counter;
 	if(left_time <= 0){
 		return;
 	}
