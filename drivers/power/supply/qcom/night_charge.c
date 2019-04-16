@@ -84,13 +84,13 @@ void calculate_max_current(unsigned int cap_battery_now, unsigned int charge_til
                 return;
         }
 
-	pr_info("%s: active = %i",module_name,active);
-	pr_info("%s: Timer pending = %s",module_name,timer_pending(&recalc_timer) ? "Yes" : "No");
-
 	if(time_h < 3)
 		time_h = 3;
 	else if(time_h > 8)
 		time_h = 8;
+
+	if(charge_till_cap >= 101)
+		charge_till_cap = 100;
 
         if(active == 1 && !timer_pending(&recalc_timer)){
                 cap_batt_now = cap_battery_now;
