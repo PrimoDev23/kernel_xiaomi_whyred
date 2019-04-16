@@ -3,8 +3,10 @@
 
 #include <linux/types.h>
 
-extern int calculate_max_current(unsigned int cap_battery_now, unsigned int charge_till_cap);
-extern int night_mode_icl(unsigned int cap_battery_now, unsigned int charge_till_cap);
-extern void reset_values();
+extern void calculate_max_current(unsigned int cap_battery_now, unsigned int charge_till_cap);
+extern void updateBatteryStats(unsigned int cap_battery_now);
+extern void reset_values(void);
+
+extern int custom_icl;
 
 #endif /* _NIGHT_CHARGE_H_ */
