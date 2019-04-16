@@ -1725,7 +1725,7 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 #endif
 
 #ifdef CONFIG_NIGHT_CHARGE
-	if(custom_icl == 0){
+	if(charging && custom_icl == 0){
 #ifdef CONFIG_CHARGING_LIMITER
                  calculate_max_current(val->intval, stop_charge_capacity);
 #else
