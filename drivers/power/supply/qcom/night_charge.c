@@ -13,80 +13,93 @@
  * v1 - First Introduction of night mode
  *
  * v2 - Correct calculation and fix issue that reboot needed to get back normal charging 
+ *
+ * v3 - Completely rework the module and use a timer to recalculate again after some time (this will give more accurate results)
  */
 
 #define module_name "night_charge"
 
 #include <linux/moduleparam.h>
-#include <linux/time.h>
+#include <linux/timer.h>
 #include "night_charge.h"
 
-static unsigned bool active = true; //0 = off, 1 = night mode, 2 = fast charge (not there yet)
+static unsigned int active = 0; //0 = off, 1 = on
 static unsigned int time_h = 6;
 static unsigned int charger_voltage = 5; //Use this to calculate charging time
-static int last_check_s = 0;
-static int left_time_s = 0;
 
-module_param(active, bool, 0644);
+module_param(active, uint, 0644);
 module_param(time_h, uint, 0644);
 module_param(charger_voltage, uint, 0644);
 
-//Gets called from outside and selects by mode
-extern int calculate_max_current(unsigned int cap_battery_now, unsigned int charge_till_cap)
-{
-	//Fallback if capacity is >= 100
-	if(cap_battery_now >= 100 || charge_till_cap >= 100)
-		return 0;
-
-	if(active){
-		//Don't let the user set values below 4 and above 8 for time in hours
-	        if (time_h > 6)
-        	        time_h = 6;
-	        else if (time_h < 4)
-        	        time_h = 4;
-		struct timespec ts;
-		getnstimeofday(*ts);
-		//Started charging
-		if(left_time_s == 0){
-			left_time_s = time_h * 3600;
-		}
-		//Fallback for crossing midnight
-		if((last_check_s - 86400 + 7200) > 0 && (last_check_s - 86400 + 7200) < ts.tv_sec){
-			left_time_s = left_time_s - (86400 - last_check_s + ts.tv_sec);
-		}
-		else if(last_check_s + 7200 < ts.tv_sec) //If not crossing midnight just calculate left time
-		{
-			left_time_ms = left_time_s - (ts.tv_sec - last_check_s);
-		}
-		else //If not 2h over don't recalculate
-			return 0;
-		pr_info("%s: calculating with night mode", module_name);
-		return night_mode_icl(cap_battery_now, charge_till_cap);
-	}
-
-	return 0;
-}
+static struct timer_list recalc_timer;
+static unsigned int cap_batt_now;
+static unsigned int charge_till;
+static unsigned int counter = 0;
 
 //Calculates night mode icl
-extern int night_mode_icl(unsigned int cap_battery_now, unsigned int charge_till_cap)
+void calc_icl(unsigned long data)
 {
-	int needed_capacity, icl, left_time_h;
-	left_time_h = left_time_s / 3600;
-	needed_capacity = 4000 * (charge_till_cap - cap_battery_now) / 100; //Calculate left capacity to 80%
+	int left_time = time_h - counter * 2;
+	if(left_time <= 0){
+		return;
+	}
+	counter = counter + 1;
+	int needed_capacity, icl;
+	needed_capacity = 4000 * (charge_till - cap_batt_now) / 100; //Calculate left capacity to 80%
 	pr_info("%s: needed_capacity = %i", module_name, needed_capacity);
 	pr_info("%s: charger_voltage = %i", module_name, charger_voltage);
-	pr_info("%s: left_time_h = %i", module_name, left_time_h);
+	pr_info("%s: left_time_h = %i", module_name, left_time);
 	//Calculate icl, print and return it
 	//Since I am using average values i can leave out voltages completely (Eventually will reintroduce them later)
-	icl = ( (needed_capacity * 405 / 100) / (left_time_h * charger_voltage) ) * 1000;
+	icl = ( (needed_capacity * 405 / 100) / (left_time * charger_voltage) ) * 1000;
 	pr_info("%s: %i", module_name, icl);
-	return icl;
+	custom_icl = icl;
+	mod_timer(&recalc_timer, jiffies + msecs_to_jiffies(3600000));
+}
+
+void load_timer(void){
+	//Setup and start timer to refresh charging rate every hour
+        setup_timer(&recalc_timer, calc_icl, 0);
+        mod_timer(&recalc_timer, jiffies + msecs_to_jiffies(3600000));
+        calc_icl(0);
 }
 
 //Reset values on unplug charger
-extern void reset_values(){
-	left_time_s = 0;
-	last_check_s = 0;
+void reset_values(void){
+	counter = 0;
+	custom_icl = 0;
+	//delete timer so it starts new cycle on replug
+	del_timer(&recalc_timer);
+}
+
+extern void updateBatteryStats(unsigned int cap_battery_now){
+	cap_batt_now = cap_battery_now;
+}
+
+//Gets called from outside and selects by mode
+void calculate_max_current(unsigned int cap_battery_now, unsigned int charge_till_cap)
+{
+        //Fallback if capacity is >= 100
+        if(cap_battery_now >= 100){
+                return;
+        }
+
+	pr_info("%s: active = %i",module_name,active);
+	pr_info("%s: Timer pending = %s",module_name,timer_pending(&recalc_timer) ? "Yes" : "No");
+
+	if(time_h < 3)
+		time_h = 3;
+	else if(time_h > 8)
+		time_h = 8;
+
+        if(active == 1 && !timer_pending(&recalc_timer)){
+                cap_batt_now = cap_battery_now;
+		charge_till = charge_till_cap;
+		load_timer();
+                return;
+        }
+
+        custom_icl = 0;
 }
 
 static int __init init_night_charge()
