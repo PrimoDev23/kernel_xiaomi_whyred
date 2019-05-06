@@ -215,10 +215,13 @@ int smblib_get_charge_param(struct smb_charger *chg,
                 strcmp(param ->name, "usb input current limit") == 0||
                 strcmp(param->name, "fast charge current") == 0)){
 			//We have to suspend here bc value can't change after first set
-			//This seems to be an issue bc of removed thermal stuff
+			//Seems this function let us choose a new value for icl even if it's "locked"
 			smblib_set_icl_current(chg, custom_icl);
+			//This is still needed to cap current
+			smblib_set_charge_param(chg, &chg->param.icl_stat, custom_icl);
         }else if(reload_values && custom_icl == 0 && charging && *val_u < 1000000){
 		smblib_set_icl_current(chg, 1500000);
+		reload_values = false;
 	}
 #endif
 

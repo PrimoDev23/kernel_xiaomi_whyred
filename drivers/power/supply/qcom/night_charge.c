@@ -12,9 +12,10 @@
  *
  * v1 - First Introduction of night mode
  *
- * v2 - Correct calculation and fix issue that reboot needed to get back normal charging 
+ * v2 - Correct calculation and fix issue that reboot needed to get back normal charging
  *
  * v3 - Completely rework the module and use a timer to recalculate again after some time (this will give more accurate results)
+ * v3.1 - Round up (for custom_icl % 25 > 12) or down (for custom_icl % 25 <= 12) to 25-blocks , bc step value is 25mA and if val_raw gets calculated and again multiplied by step value it will be lower than custom_icl
  */
 
 #define module_name "night_charge"
@@ -39,18 +40,22 @@ static unsigned int counter = 0;
 //Calculates night mode icl
 void calc_icl(unsigned long data)
 {
-	int left_time = time_h - counter;
+	int left_time, needed_capacity, icl;
+	left_time = time_h - counter;
 	if(left_time <= 0){
 		return;
 	}
 	counter = counter + 1;
-	int needed_capacity, icl;
 	needed_capacity = 4000 * (charge_till - cap_batt_now) / 100; //Calculate left capacity to 80%
 	pr_info("%s: needed_capacity = %i", module_name, needed_capacity);
 	pr_info("%s: charger_voltage = %i", module_name, charger_voltage);
 	pr_info("%s: left_time_h = %i", module_name, left_time);
 	//Calculate icl, print and return it
 	icl = ( (needed_capacity * 405 / 100) / (left_time * charger_voltage) ) * 1000;
+	if(icl % 25 <= 12)
+		icl = icl - (icl % 25);
+	else
+		icl = icl + (icl % 25);
 	pr_info("%s: %i", module_name, icl);
 	custom_icl = icl;
 	mod_timer(&recalc_timer, jiffies + msecs_to_jiffies(3600000));
