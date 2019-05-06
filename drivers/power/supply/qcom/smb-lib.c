@@ -185,16 +185,6 @@ int smblib_icl_override(struct smb_charger *chg, bool override)
 	return rc;
 }
 
-void suspend_charging(struct smb_charger *chg, bool suspend)
-{
-	union power_supply_propval suspend_cache = {0, };
-
-	suspend_cache.intval = suspend ? 1 : 0;
-        if(smblib_set_prop_input_suspend(chg,&suspend_cache)){
-                pr_err("Charging limiter: Error while suspend charging");
-        }
-}
-
 /********************
  * REGISTER GETTERS *
  ********************/
@@ -226,9 +216,6 @@ int smblib_get_charge_param(struct smb_charger *chg,
                 strcmp(param->name, "fast charge current") == 0)){
 			//We have to suspend here bc value can't change after first set
 			//This seems to be an issue bc of removed thermal stuff
-			//suspend_charging(chg, true);
-			//suspend_charging(chg, false);
-                        //smblib_set_charge_param(chg, param, custom_icl);
 			smblib_set_icl_current(chg, custom_icl);
         }else if(reload_values && custom_icl == 0 && charging && *val_u < 1000000){
 		smblib_set_icl_current(chg, 1500000);
