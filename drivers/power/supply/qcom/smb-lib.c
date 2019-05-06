@@ -1781,12 +1781,6 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	return rc;
 }
 
-#ifdef CONFIG_NIGHT_CHARGE
-void recalculate_current(unsigned long data){
-
-}
-#endif
-
 int smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
