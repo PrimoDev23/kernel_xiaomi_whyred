@@ -50,7 +50,6 @@ void calc_icl(unsigned long data)
 	pr_info("%s: charger_voltage = %i", module_name, charger_voltage);
 	pr_info("%s: left_time_h = %i", module_name, left_time);
 	//Calculate icl, print and return it
-	//Since I am using average values i can leave out voltages completely (Eventually will reintroduce them later)
 	icl = ( (needed_capacity * 405 / 100) / (left_time * charger_voltage) ) * 1000;
 	pr_info("%s: %i", module_name, icl);
 	custom_icl = icl;
