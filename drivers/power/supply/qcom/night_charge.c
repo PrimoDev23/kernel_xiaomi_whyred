@@ -16,6 +16,7 @@
  *
  * v3 - Completely rework the module and use a timer to recalculate again after some time (this will give more accurate results)
  * v3.1 - Round up (for custom_icl % 25 > 12) or down (for custom_icl % 25 <= 12) to 25-blocks , bc step value is 25mA and if val_raw gets calculated and again multiplied by step value it will be lower than custom_icl
+ * v3.2 - Always round up since there is no real harm and users complained about 3% missing to full charge
  */
 
 #define module_name "night_charge"
@@ -52,10 +53,8 @@ void calc_icl(unsigned long data)
 	pr_info("%s: left_time_h = %i", module_name, left_time);
 	//Calculate icl, print and return it
 	icl = ( (needed_capacity * 405 / 100) / (left_time * charger_voltage) ) * 1000;
-	if(icl % 25 <= 12)
-		icl = icl - (icl % 25);
-	else
-		icl = icl + (icl % 25);
+	if(icl % 25 != 0)
+		icl = icl + 25;
 	pr_info("%s: %i", module_name, icl);
 	custom_icl = icl;
 	mod_timer(&recalc_timer, jiffies + msecs_to_jiffies(3600000));
