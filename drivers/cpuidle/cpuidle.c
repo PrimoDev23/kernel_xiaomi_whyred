@@ -618,25 +618,17 @@ EXPORT_SYMBOL_GPL(cpuidle_register);
 #ifdef CONFIG_SMP
 /*
  * This function gets called when a part of the kernel has a new latency
- * requirement.  This means we need to get only those processors out of their
- * C-state for which qos requirement is changed, and then recalculate a new
- * suitable C-state. Just do a cross-cpu IPI; that wakes them all right up.
+ * requirement.  This means we need to get all processors out of their C-state,
+ * and then recalculate a new suitable C-state. Just do a cross-cpu IPI; that
+ * wakes them all right up.
  */
 static int cpuidle_latency_notify(struct notifier_block *b,
 		unsigned long l, void *v)
 {
 	static unsigned long prev_latency = ULONG_MAX;
-	unsigned long cpus;
-	struct cpumask *idle_mask = to_cpumask(&cpus);
 
-	if (l < prev_latency) {
-		preempt_disable();
-		cpus = atomic_read(&idle_cpus);
-		cpumask_andnot(idle_mask, idle_mask, cpu_isolated_mask);
-		arch_send_call_function_ipi_mask(idle_mask);
-		preempt_enable();
-	}
-
+	if (l < prev_latency)
+		wake_up_all_idle_cpus();
 	prev_latency = l;
 
 	return NOTIFY_OK;
