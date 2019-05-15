@@ -643,7 +643,7 @@ static ktime_t tick_nohz_stop_sched_tick(struct tick_sched *ts,
 	 */
 	delta = next_tick - basemono;
 	if (delta <= (u64)TICK_NSEC) {
-		tick.tv64 = 0;
+		tick = 0;
 		if (!ts->tick_stopped)
 			goto out;
 		if (delta == 0) {
@@ -691,7 +691,7 @@ static ktime_t tick_nohz_stop_sched_tick(struct tick_sched *ts,
 	tick = expires;
 
 	/* Skip reprogram of event if its not changed */
-	if (ts->tick_stopped && (expires == dev->next_event.tv64))
+	if (ts->tick_stopped && (expires == dev->next_event))
 		goto out;
 
 	/*
@@ -1069,7 +1069,7 @@ static void tick_nohz_kick_tick(struct tick_sched *ts, ktime_t now)
 	 * already reached or less/equal than the tick period.
 	 */
 	delta =	ktime_sub(hrtimer_get_expires(&ts->sched_timer), now);
-	if (delta.tv64 <= tick_period.tv64)
+	if (delta <= tick_period)
 		return;
 
 	tick_nohz_restart(ts, now);
