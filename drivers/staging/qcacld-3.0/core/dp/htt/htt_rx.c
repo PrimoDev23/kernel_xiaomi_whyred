@@ -2509,7 +2509,7 @@ htt_rx_amsdu_rx_in_order_pop_ll(htt_pdev_handle pdev,
 						   HTT_RX_STD_DESC_RESERVATION);
 				qdf_nbuf_set_next(mon_msdu, NULL);
 
-				if (!(*head_mon_msdu)) {
+				if (head_mon_msdu && !(*head_mon_msdu)) {
 					*head_mon_msdu = mon_msdu;
 					mon_prev = mon_msdu;
 				} else {
