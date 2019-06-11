@@ -327,7 +327,6 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &min_sched_granularity_ns,
 		.extra2		= &max_sched_granularity_ns,
 	},
-<<<<<<< HEAD
 #ifdef CONFIG_SCHED_WALT
 	{
 		.procname	= "sched_walt_init_task_load_pct",
