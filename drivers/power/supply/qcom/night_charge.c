@@ -102,7 +102,7 @@ void calculate_max_current(unsigned int cap_battery_now, unsigned int charge_til
         custom_icl = 0;
 }
 
-static int __init init_night_charge()
+static int __init init_night_charge(void)
 {
 	//Just print init message for now
 	pr_info("%s: Initialized!", module_name);
