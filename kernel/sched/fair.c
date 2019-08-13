@@ -9607,8 +9607,6 @@ more_balance:
 
 		update_rq_clock(busiest);
 
-		update_rq_clock(busiest);
-
 		/*
 		 * cur_ld_moved - load moved in current iteration
 		 * ld_moved     - cumulative load moved across iterations
