@@ -2279,7 +2279,6 @@ static void try_to_wake_up_local(struct task_struct *p, struct rq_flags *rf)
 	}
 
 	ttwu_do_wakeup(rq, p, 0, rf);
-	ttwu_do_wakeup(rq, p, 0);
 	if (schedstat_enabled())
 		ttwu_stat(p, smp_processor_id(), 0);
 out:
