@@ -1288,14 +1288,6 @@ static void start_hrtick_dl(struct rq *rq, struct task_struct *p)
 }
 #endif
 
-static inline void set_next_task(struct rq *rq, struct task_struct *p)
-{
-	p->se.exec_start = rq_clock_task(rq);
-
-	/* You can't push away the running task */
-	dequeue_pushable_dl_task(rq, p);
-}
-
 static struct sched_dl_entity *pick_next_dl_entity(struct rq *rq,
 						   struct dl_rq *dl_rq)
 {
@@ -1351,8 +1343,10 @@ pick_next_task_dl(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 	BUG_ON(!dl_se);
 
 	p = dl_task_of(dl_se);
+	p->se.exec_start = rq_clock_task(rq);
 
-	set_next_task(rq, p);
+	/* Running task will never be pushed. */
+       dequeue_pushable_dl_task(rq, p);
 
 	if (hrtick_enabled(rq))
 		start_hrtick_dl(rq, p);
@@ -1411,7 +1405,12 @@ static void task_dead_dl(struct task_struct *p)
 
 static void set_curr_task_dl(struct rq *rq)
 {
-	set_next_task(rq, rq->curr);
+	struct task_struct *p = rq->curr;
+
+	p->se.exec_start = rq_clock_task(rq);
+
+	/* You can't push away the running task */
+	dequeue_pushable_dl_task(rq, p);
 }
 
 #ifdef CONFIG_SMP
