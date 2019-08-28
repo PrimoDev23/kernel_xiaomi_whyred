@@ -751,7 +751,7 @@ update_dl_revised_wakeup(struct sched_dl_entity *dl_se, struct rq *rq)
 	 */
 	WARN_ON(dl_time_before(dl_se->deadline, rq_clock(rq)));
 
-	dl_se->runtime = (dl_se->dl_density * laxity) >> 20;
+	dl_se->runtime = (dl_se->dl_density * laxity) >> BW_SHIFT;
 }
 
 /*
