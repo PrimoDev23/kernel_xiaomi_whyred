@@ -6095,7 +6095,7 @@ static inline int select_energy_cpu_idx(struct energy_env *eenv)
 	sg = sd->groups;
 	do {
 		/* Skip SGs which do not contains a candidate CPU */
-		if (!cpumask_intersects(&eenv->cpus_mask, sched_group_cpus(sg)))
+		if (!cpumask_intersects(&eenv->cpus_mask, sched_group_span(sg)))
 			continue;
 
 		eenv->sg_top = sg;
