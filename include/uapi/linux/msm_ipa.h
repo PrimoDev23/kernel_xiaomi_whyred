@@ -41,6 +41,11 @@
 #define IPAHAL_NAT_INVALID_PROTOCOL   0xFF
 
 /**
+ * name for default value of invalid protocol of NAT
+ */
+#define IPAHAL_NAT_INVALID_PROTOCOL   0xFF
+
+/**
  * commands supported by IPA driver
  */
 #define IPA_IOCTL_ADD_HDR                       0
