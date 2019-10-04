@@ -3427,8 +3427,8 @@ static const struct snd_soc_dapm_widget msm_anlg_cdc_dapm_widgets[] = {
 		msm_anlg_cdc_hph_pa_event, SND_SOC_DAPM_PRE_PMU |
 		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD |
 		SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_PGA_E("SPK PA", SND_SOC_NOPM,
-			0, 0, NULL, 0, msm_anlg_cdc_codec_enable_spk_pa,
+	SND_SOC_DAPM_PGA_E("SPK PA", MSM89XX_PMIC_ANALOG_SPKR_DRV_CTL,
+			7, 0, NULL, 0, msm_anlg_cdc_codec_enable_spk_pa,
 			SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU |
 			SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_PGA_E("LINEOUT PA", MSM89XX_PMIC_ANALOG_RX_LO_EN_CTL,
@@ -4663,7 +4663,8 @@ static int msm_anlg_cdc_probe(struct platform_device *pdev)
 	int adsp_state;
 
 	adsp_state = apr_get_subsys_state();
-	if (adsp_state != APR_SUBSYS_LOADED) {
+	if (adsp_state != APR_SUBSYS_LOADED ||
+		!q6core_is_adsp_ready()) {
 		dev_err(&pdev->dev, "Adsp is not loaded yet %d\n",
 			adsp_state);
 		return -EPROBE_DEFER;

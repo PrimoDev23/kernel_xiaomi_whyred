@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -406,8 +406,13 @@
 		};
 
 		cont_splash_mem: splash_region@9d400000 {
-			reg = <0x0 0x9d400000 0x0 0x02400000>;
+			reg = <0x0 0x9d400000 0x0 0x23ff000>;
 			label = "cont_splash_mem";
+		};
+
+		dfps_data_mem: dfps_data_mem@0x9f7ff000 {
+		       reg = <0 0x9f7ff000 0 0x00001000>;
+		       label = "dfps_data_mem";
 		};
 	};
 
@@ -613,7 +618,7 @@
 			compatible = "qcom,memshare-peripheral";
 			qcom,peripheral-size = <0x0>;
 			qcom,client-id = <1>;
-			qcom,allocate-boot-time;
+			qcom,allocate-on-request;
 			label = "modem";
 		};
 	};

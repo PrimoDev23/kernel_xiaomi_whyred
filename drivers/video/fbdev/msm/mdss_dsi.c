@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2019 XiaoMi, Inc.
  *

@@ -42,8 +42,6 @@ static int msm_vb2_queue_setup(struct vb2_queue *q,
 			   data->type);
 		goto done;
 	}
-	rc = 0;
-
 done:
 	mutex_unlock(q->lock);
 	return rc;
