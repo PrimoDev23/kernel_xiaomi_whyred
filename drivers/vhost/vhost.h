@@ -158,6 +158,8 @@ struct vhost_dev {
 	struct eventfd_ctx *log_ctx;
 	struct llist_head work_list;
 	struct task_struct *worker;
+	int weight;
+	int byte_weight;
 	struct vhost_umem *umem;
 	struct vhost_umem *iotlb;
 	spinlock_t iotlb_lock;

@@ -5022,6 +5022,37 @@ static void cc_soc_store_work(struct work_struct *work)
 	fg_relax(&chip->cc_soc_wakeup_source);
 }
 
+static void cc_soc_store_work(struct work_struct *work)
+{
+	struct fg_chip *chip = container_of(work, struct fg_chip,
+					cc_soc_store_work);
+	int cc_soc_pct;
+
+	if (!chip->nom_cap_uah) {
+		pr_err("nom_cap_uah zero!\n");
+		fg_relax(&chip->cc_soc_wakeup_source);
+		return;
+	}
+
+	cc_soc_pct = get_sram_prop_now(chip, FG_DATA_CC_CHARGE);
+	cc_soc_pct = div64_s64(cc_soc_pct * 100,
+				chip->nom_cap_uah);
+	chip->last_cc_soc = div64_s64((int64_t)chip->last_soc *
+				FULL_PERCENT_28BIT, FULL_SOC_RAW);
+
+	if (fg_debug_mask & FG_STATUS)
+		pr_info("cc_soc_pct: %d last_cc_soc: %lld\n", cc_soc_pct,
+			chip->last_cc_soc);
+
+	if (fg_reset_on_lockup && (chip->cc_soc_limit_pct > 0 &&
+			cc_soc_pct >= chip->cc_soc_limit_pct)) {
+		pr_err("CC_SOC out of range\n");
+		fg_check_ima_error_handling(chip);
+	}
+
+	fg_relax(&chip->cc_soc_wakeup_source);
+}
+
 #define HARD_JEITA_ALARM_CHECK_NS	10000000000ULL
 static enum alarmtimer_restart fg_hard_jeita_alarm_cb(struct alarm *alarm,
 						ktime_t now)
@@ -5954,6 +5985,58 @@ static void esr_extract_config_work(struct work_struct *work)
 		else
 			fg_config_imptr_pulse(chip, false);
 	}
+}
+
+#define KI_COEFF_MEDC_REG		0x400
+#define KI_COEFF_MEDC_OFFSET		0
+#define KI_COEFF_HIGHC_REG		0x404
+#define KI_COEFF_HIGHC_OFFSET		0
+#define DEFAULT_MEDC_VOLTAGE_GAIN	3
+#define DEFAULT_HIGHC_VOLTAGE_GAIN	2
+static void discharge_gain_work(struct work_struct *work)
+{
+	struct fg_chip *chip = container_of(work, struct fg_chip,
+						dischg_gain_work);
+	u8 buf[2];
+	int capacity, rc, i;
+	int64_t medc_val = DEFAULT_MEDC_VOLTAGE_GAIN;
+	int64_t highc_val = DEFAULT_HIGHC_VOLTAGE_GAIN;
+
+	capacity = get_prop_capacity(chip);
+	if (chip->status == POWER_SUPPLY_STATUS_DISCHARGING) {
+		for (i = VOLT_GAIN_MAX - 1; i >= 0; i--) {
+			if (capacity <= chip->dischg_gain.soc[i]) {
+				medc_val = chip->dischg_gain.medc_gain[i];
+				highc_val = chip->dischg_gain.highc_gain[i];
+			}
+		}
+	}
+
+	if (fg_debug_mask & FG_STATUS)
+		pr_info("Capacity: %d, medc_gain: %lld highc_gain: %lld\n",
+			capacity, medc_val, highc_val);
+
+	medc_val *= MICRO_UNIT;
+	half_float_to_buffer(medc_val, buf);
+	rc = fg_mem_write(chip, buf, KI_COEFF_MEDC_REG, 2,
+				KI_COEFF_MEDC_OFFSET, 0);
+	if (rc)
+		pr_err("Couldn't write to ki_coeff_medc_reg, rc=%d\n", rc);
+	else if (fg_debug_mask & FG_STATUS)
+		pr_info("Value [%x %x] written to ki_coeff_medc\n", buf[0],
+			buf[1]);
+
+	highc_val *= MICRO_UNIT;
+	half_float_to_buffer(highc_val, buf);
+	rc = fg_mem_write(chip, buf, KI_COEFF_HIGHC_REG, 2,
+				KI_COEFF_HIGHC_OFFSET, 0);
+	if (rc)
+		pr_err("Couldn't write to ki_coeff_highc_reg, rc=%d\n", rc);
+	else if (fg_debug_mask & FG_STATUS)
+		pr_info("Value [%x %x] written to ki_coeff_highc\n", buf[0],
+			buf[1]);
+
+	fg_relax(&chip->dischg_gain_wakeup_source);
 }
 
 #define KI_COEFF_MEDC_REG		0x400
