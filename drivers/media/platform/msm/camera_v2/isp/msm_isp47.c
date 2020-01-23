@@ -27,6 +27,8 @@
 #include "linux/iopoll.h"
 #include "msm_cam_cx_ipeak.h"
 
+#include <linux/cam_blobs.h>
+
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
@@ -37,9 +39,7 @@
 #define VFE47_STATS_BURST_LEN 3
 #define VFE47_UB_SIZE_VFE0 2048
 #define VFE47_UB_SIZE_VFE1 1536
-#define VFE47_UB_STATS_SIZE 288
-#define MSM_ISP47_TOTAL_IMAGE_UB_VFE0 (VFE47_UB_SIZE_VFE0 - VFE47_UB_STATS_SIZE)
-#define MSM_ISP47_TOTAL_IMAGE_UB_VFE1 (VFE47_UB_SIZE_VFE1 - VFE47_UB_STATS_SIZE)
+unsigned int VFE47_UB_STATS_SIZE = 144;
 #define VFE47_WM_BASE(idx) (0xA0 + 0x2C * idx)
 #define VFE47_RDI_BASE(idx) (0x46C + 0x4 * idx)
 #define VFE47_XBAR_BASE(idx) (0x90 + 0x4 * (idx / 2))
@@ -154,8 +154,8 @@ uint32_t msm_vfe47_ub_reg_offset(struct vfe_device *vfe_dev, int wm_idx)
 uint32_t msm_vfe47_get_ub_size(struct vfe_device *vfe_dev)
 {
 	if (vfe_dev->pdev->id == ISP_VFE0)
-		return MSM_ISP47_TOTAL_IMAGE_UB_VFE0;
-	return MSM_ISP47_TOTAL_IMAGE_UB_VFE1;
+		return VFE47_UB_SIZE_VFE0 - VFE47_UB_STATS_SIZE;
+	return VFE47_UB_SIZE_VFE1 - VFE47_UB_STATS_SIZE;
 }
 
 void msm_vfe47_config_irq(struct vfe_device *vfe_dev,
@@ -3144,6 +3144,11 @@ static struct platform_driver vfe47_driver = {
 
 static int __init msm_vfe47_init_module(void)
 {
+	if (cam_blobs == 0)
+		VFE47_UB_STATS_SIZE = 144;
+	else
+		VFE47_UB_STATS_SIZE = 288;
+
 	return platform_driver_register(&vfe47_driver);
 }
 

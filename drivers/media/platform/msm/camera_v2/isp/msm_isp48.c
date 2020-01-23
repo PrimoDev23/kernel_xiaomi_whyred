@@ -25,11 +25,12 @@
 #include "msm_isp48.h"
 #include "cam_soc_api.h"
 
+#include <linux/cam_blobs.h>
+
 #define MSM_VFE48_BUS_CLIENT_INIT 0xABAB
 #define VFE48_STATS_BURST_LEN 3
 #define VFE48_UB_SIZE_VFE 2048 /* 2048 * 256 bits = 64KB */
-#define VFE48_UB_STATS_SIZE 608
-#define MSM_ISP48_TOTAL_IMAGE_UB_VFE (VFE48_UB_SIZE_VFE - VFE48_UB_STATS_SIZE)
+unsigned int VFE48_UB_STATS_SIZE = 144;
 
 
 static uint32_t stats_base_addr[] = {
@@ -319,16 +320,28 @@ void msm_vfe48_stats_cfg_ub(struct vfe_device *vfe_dev)
 	int i;
 	uint32_t ub_offset = 0, stats_burst_len;
 	uint32_t ub_size[VFE47_NUM_STATS_TYPE] = {
-		80, /* MSM_ISP_STATS_HDR_BE */
-		64, /* MSM_ISP_STATS_BG */
-		64, /* MSM_ISP_STATS_BF */
-		64, /* MSM_ISP_STATS_HDR_BHIST */
-		64, /* MSM_ISP_STATS_RS */
-		64, /* MSM_ISP_STATS_CS */
-		64, /* MSM_ISP_STATS_IHIST */
-		64, /* MSM_ISP_STATS_BHIST */
-		80, /* MSM_ISP_STATS_AEC_BG */
-	};
+		16, /* MSM_ISP_STATS_HDR_BE */
+		16, /* MSM_ISP_STATS_BG */
+		16, /* MSM_ISP_STATS_BF */
+		16, /* MSM_ISP_STATS_HDR_BHIST */
+		16, /* MSM_ISP_STATS_RS */
+		16, /* MSM_ISP_STATS_CS */
+		16, /* MSM_ISP_STATS_IHIST */
+		16, /* MSM_ISP_STATS_BHIST */
+		16, /* MSM_ISP_STATS_AEC_BG */
+	};;
+	if(cam_blobs == 1){
+		ub_size[0] = 80;
+		ub_size[1] = 64;
+		ub_size[2] = 64;
+		ub_size[3] = 64;
+		ub_size[4] = 64;
+		ub_size[5] = 64;
+		ub_size[6] = 64;
+		ub_size[7] = 64;
+		ub_size[8] = 64;
+		ub_size[9] = 80;
+	}
 
 	stats_burst_len = VFE48_STATS_BURST_LEN;
 	ub_offset = VFE48_UB_SIZE_VFE;
@@ -343,7 +356,7 @@ void msm_vfe48_stats_cfg_ub(struct vfe_device *vfe_dev)
 
 uint32_t msm_vfe48_get_ub_size(struct vfe_device *vfe_dev)
 {
-	return MSM_ISP48_TOTAL_IMAGE_UB_VFE;
+	return VFE48_UB_SIZE_VFE - VFE48_UB_STATS_SIZE;
 }
 
 
@@ -491,6 +504,11 @@ static struct platform_driver vfe48_driver = {
 
 static int __init msm_vfe47_init_module(void)
 {
+	if (cam_blobs == 0)
+		VFE48_UB_STATS_SIZE = 144;
+	else
+		VFE48_UB_STATS_SIZE = 608;
+
 	return platform_driver_register(&vfe48_driver);
 }
 

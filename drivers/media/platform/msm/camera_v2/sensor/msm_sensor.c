@@ -19,6 +19,8 @@
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/regulator/consumer.h>
 
+#include <linux/cam_blobs.h>
+
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
@@ -305,7 +307,7 @@ int msm_sensor_match_vendor_id(struct msm_sensor_ctrl_t *s_ctrl)
 		have_vcmid = 1;
 	}
 
-    if (s_ctrl->sensordata->lens_id_info->lens_id_addr != 0)
+    if (cam_blobs == 1 && s_ctrl->sensordata->lens_id_info->lens_id_addr != 0)
 	{
 	    msm_camera_cci_i2c_read(
 		sensor_i2c_client,
@@ -346,7 +348,7 @@ int msm_sensor_match_vendor_id(struct msm_sensor_ctrl_t *s_ctrl)
 				__func__, vcmid, s_ctrl->sensordata->vcm_id_info->vcm_id);
 			}
 		}
-        if(have_lensid == 1)
+        if(cam_blobs == 1 && have_lensid == 1)
 		{
 			if (s_ctrl->sensordata->lens_id_info->lens_id != lensid)
 			{

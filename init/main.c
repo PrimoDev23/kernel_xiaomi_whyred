@@ -90,6 +90,9 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 #include <soc/qcom/boot_stats.h>
+
+#include <linux/cam_blobs.h>
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -143,6 +146,14 @@ unsigned int get_android_version(void)
 {
 	return android_version;
 }
+
+unsigned int cam_blobs = 0;
+static int __init set_cam_blobs(char *val)
+{
+	get_option(&val, &cam_blobs);
+	return 0;
+}
+__setup("whyred.camblobs=", set_cam_blobs);
 
 /*
  * Used to generate warnings if static_key manipulation functions are used
