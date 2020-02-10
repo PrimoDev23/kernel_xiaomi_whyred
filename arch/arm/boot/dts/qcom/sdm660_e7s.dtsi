@@ -292,10 +292,10 @@
 
 		CPU_COST_0: core-cost0 {
 			busy-cost-data = <
-				427 1456
-				538 1566
-				671 1624
-				707 1652
+				427 83
+				538 146
+				671 158
+				707 228
 			>;
 			idle-cost-data = <
 				20 16 12 8
@@ -303,10 +303,10 @@
 		};
 		CPU_COST_1: core-cost1 {
 			busy-cost-data = <
-				651 1943
-				802 2187
-				1021 2596
-				1024 2695
+				651 307
+				802 485
+				1021 857
+				1024 883
 			>;
 			idle-cost-data = <
 				100 80 60 40
@@ -314,10 +314,10 @@
 		};
 		CLUSTER_COST_0: cluster-cost0 {
 			busy-cost-data = <
-				427 20
-				538 29
-				671 35
-				707 49
+				427 7
+				538 9
+				671 9
+				707 11
 			>;
 			idle-cost-data = <
 				4 3 2 1
@@ -325,10 +325,10 @@
 		};
 		CLUSTER_COST_1: cluster-cost1 {
 			busy-cost-data = <
-				651 135
-				802 193
-				1021 272
-				1024 292
+				651 14
+				802 17
+				1021 25
+				1024 31
 			>;
 			idle-cost-data = <
 				4 3 2 1
